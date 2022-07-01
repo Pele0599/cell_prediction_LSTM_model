@@ -29,6 +29,7 @@ param_ML_model = {
 
 server = "mlCellPredictDriver"
 action = "predictWithModel"
+
 # Write a request to train the model 
 request_url = "http://{}:{}/{}/{}".format(
     server_config["server_mac"]["key"],
@@ -37,5 +38,4 @@ request_url = "http://{}:{}/{}/{}".format(
     action,
     )
 
-request.get(request_url, )
-
+request.get(request_url,)
