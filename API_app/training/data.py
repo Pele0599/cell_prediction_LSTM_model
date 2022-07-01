@@ -8,8 +8,6 @@ device = torch.device("cuda:0" if cuda else "cpu")
 config = configparser.ConfigParser()
 config.read("../config.ini")
 
-
-
 def nll_loss(target, mean, var_log):
 
     nll = 0.5 * (torch.log(var_log) + torch.square(target - mean) / ((var_log)))
