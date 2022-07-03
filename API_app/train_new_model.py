@@ -58,7 +58,7 @@ def train_new_model(params: dict,
         start_cycle=params['start'],
         stop_cycle=params['sequence_length']
     )
-
+    
     train_idxs, val_idxs, test_idxs = dl.get_split(len(x), seed=42)
     
     if params['train_percentage'] != 1:
@@ -71,10 +71,11 @@ def train_new_model(params: dict,
     x = dl.scale_x(x, y)
 
     x = dl.remove_outliers(x, y)
+    
     old_x = x.copy()
 
     smoothed_x = dl.smooth_x(x, y, num_points=20)
-
+    
     train_x, train_y, train_s = dl.assemble_dataset(
         smoothed_x[train_idxs],
         y[train_idxs],
@@ -82,7 +83,7 @@ def train_new_model(params: dict,
         seq_len=params['sequence_length'],
         use_cycle_counter=params['use_cycle_counter'],
     )
-
+    print(train_x[:,:,None])
     val_x, val_y, val_s = dl.assemble_dataset(
         smoothed_x[val_idxs],
         y[val_idxs],
@@ -118,7 +119,7 @@ def train_new_model(params: dict,
         2]  #
    
     num_augment = train_s.shape[1]
-    print(num_augment, "API APPP")
+
     model = initialize_model(params, input_dim, num_augment)
     print('Model API APP', model)
     optimizer = optim.Adam(model.parameters(), )

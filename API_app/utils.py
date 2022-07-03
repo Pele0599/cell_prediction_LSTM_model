@@ -6,6 +6,7 @@ import torch
 import training.models as models
 import warnings
 from os import environ
+import requests 
 
 def create_json_status(train_file_name,params, model_name, save_results_path):
     '''
@@ -84,6 +85,8 @@ def initialize_model(params, input_dim, num_augment, model_weights = None):
         return model 
     return model 
 
+
+    
 
 #create_json_status('blabla.hdf5', params, 
 #        "test_model", "/Users/paolovincenzofreieslebendeblasio/Cell_Lifetime_prediction/")

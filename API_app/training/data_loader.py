@@ -6,7 +6,7 @@ from tracemalloc import stop
 import h5py
 import numpy as np
 from scipy import interpolate
-
+import matplotlib.pyplot as plt 
 config = configparser.ConfigParser()
 config.read("../config.ini")
 
@@ -14,10 +14,11 @@ def get_charge_discharge_(I, t, offset=10):
     '''
     Sees when the battery is undergoing charging, or discharging based on the 
     current. Return the charge in the battery as a function of time
+    TODO
+    Make sure that the data collected has a length larger than 1, if not throw an error
     '''
-    length_dataset = len(I)
-
-    assert length_dataset > offset + 1 #Require that the dataset has a certain length if not, the model
+    
+    #assert length_dataset > offset + 1 #Require that the dataset has a certain length if not, the model
     #will most likely perform poorly
     charging_current = False
     if I[offset] > 0:
@@ -40,8 +41,11 @@ def transform_arbin_data_to_dict(data, cell=''):
     '''
     cycle_dict = {}
     Qd_mean = []
-    for j in range(0, len(data),2): #We loop over all cycles for a given channel/cell 
+    for j in range(2, len(data),2): #We loop over all cycles for a given channel/cell 
         try:
+            cycle = "Cycle_" + str(j + 1)
+
+            #Just for testing with realtime arbin data 
             cycle = "Cycle_" + str(j + 1)
             I1 = np.array(data[cycle]["I"])
             V1 = np.array(data[cycle]["V"])
@@ -52,12 +56,12 @@ def transform_arbin_data_to_dict(data, cell=''):
             Vprev = np.array(data[cycle_prev]["V"])
             tprev = np.array(data[cycle_prev]["t"])
             
-            #We define cycles pairwise 
-            # as one cycle is defined as either a charging, or a discharging cycle 
-            #Is a discharging process 
+            # note to self - cycles are defined pairwise, one charging 
+            # cycle, and one discharging cycle unlike in Lauras datasets/code
         except:
             continue
-        #We do not know a_priori if the cell is charging or discharging...
+        # note to sefl, we do not know a_priori if the cell is charging or discharging...
+        # Unlike in previous datasets.....
         Q, is_charging = get_charge_discharge_(I1,t1)
         if is_charging:
             Qc = Q
@@ -78,21 +82,15 @@ def transform_arbin_data_to_dict(data, cell=''):
             cd = {'Ic': Iprev, 'Id' : I1, 'Qc': Qc, 'Qd': Qd, 
                    'Vc':Vprev,'Vd' : V1,  'td':td, 'tc': tc}
         
-        #I do not know how to calculate the capacity_curve referred to in the paper
-        # So for now I just assume that the capacity, is equal to the capacity when the battery is charged fully
         Qd_mean.append(Qd[-1])
-         #The charge policy, meaning how we charged, and discharged the cell
-         #This is not relevant for how we train the model, so for now we just set some value 
-        
-        #We turn them in
+
         cycle_dict[str(int(j/2))] = cd
+    #Policy = [Charging current in C, 
+    # how much we charge it to (SOC) for example 0.8, Discharging current in C]
     policy = "3.6C(80%)-3.6C"
     #We also need a dictionary over the summary of the charging and discharging protocols 
 
-    #Remember this dicitonary is only for testing with Leons data ...
-    "cell10", "cell19", "cell6", "cell7"
-    lifetime = {"cell10": 118, "cell19": 128, "cell6" : 236, "cell7" : 194}
-    cycle_life = lifetime[cell]
+    cycle_life = int((j-1) / 2) #lifetime of the cell for now only testing
 
     cell_dict = {'cycle_life': cycle_life, 
                  'charge_policy':policy, 
@@ -108,21 +106,18 @@ def load_data_all_channels(abs_file_path):
     The dictionary is compatible with the rest of the ML framework
     
     '''
+    #Note to self
     #For testing with the Data given by Leon with the 14 cells, only these cells 
     #reached 80 % capacity within their respective cycles
     #This code is to be removed later ... 
 
-    cells_reached_80 = ["cell10", "cell19", "cell6", "cell7"]
     bat_dict = {} #Contains the data from all the cycles for the different channels
     with h5py.File(abs_file_path, "r") as f:
         #Loop over all the channels/cells 
         for CH_Nr in list(f.keys()):
-            if CH_Nr in cells_reached_80:
-
-                data_channel = f[CH_Nr]["split"] #We get the cycling data from a specific channel 
-                chn_data_dict = transform_arbin_data_to_dict(data_channel, CH_Nr) #We transform the data such that 
-                bat_dict.update({CH_Nr: chn_data_dict})
-            #it can be used to train the LSTM model 
+            data_channel = f[CH_Nr]["split"] #We get cycling data from a specific channel 
+            chn_data_dict = transform_arbin_data_to_dict(data_channel, CH_Nr) #We transform the data such that 
+            bat_dict.update({CH_Nr: chn_data_dict})
     
     return bat_dict
         
@@ -197,17 +192,13 @@ def get_mean_voltage_difference(battery, cycle):
 
 def get_capacity_curve(cell, cycle, is_discharge):
     """
-    Returns the charge inside the battery, when it is charged or discharged
+    Returns the charge inside the battery, during charge/discharge
     """
-
-    # We get the voltage, and charge on the battery during charging 
-    # and discharging processes respectively 
     
     if is_discharge:
         q_curve = cell["cycles"][str(cycle)]["Qd"]
         v_curve = cell["cycles"][str(cycle)]["Vd"]
     else:
-        #Or start the count when the cell is charging 
         q_curve = cell["cycles"][str(cycle)]["Qc"]
         v_curve = cell["cycles"][str(cycle)]["Vc"]
     
@@ -238,12 +229,14 @@ def smooth_x(
 
 def get_capacity_spline(cell, cycle):
     """
-    splines the voltage capacity curve
+    Interpolates the charge as a function of voltage, Q = Q(V) 
+
     """
     #Get charge/discharge curve, and voltage curve as a the cell goes from 
     # fully charged -> discharged, or discharged -> fully charged
     
     v_curve, q_curve = get_capacity_curve(cell, cycle, is_discharge=True)
+    
     f = interpolate.interp1d(v_curve, q_curve, fill_value="extrapolate")
     # We try to interpolate Q = Q(V)
     points = np.linspace(4.25, 2.75, num=1000) 
@@ -255,14 +248,17 @@ def get_capacity_spline(cell, cycle):
     return spline
 
 
-def scale_x(x, y):
-    max_val = 1.1  # nominal capacity for the cells which you are testing (in Ah)
+def scale_x(x, y, exp_max_capacity = 2.84):
+    max_val = exp_max_capacity  # nominal capacity for the cells which you are testing
     end_of_life_val = (
-        0.8 * 1.1
-    )  # batteries are considered dead after 80%. This should be .8*1.1
+        0.8 * exp_max_capacity
+    )  
+    # batteries are considered dead after 80%. 
+    # This should be .8 * experimentally found max capacity
+
     x = np.minimum(x, max_val)
     x = np.maximum(x, end_of_life_val)
-
+    
     x = (x - end_of_life_val) / (max_val - end_of_life_val)
 
     return x
@@ -279,24 +275,17 @@ def remove_outliers(x_in, y):
         x[idx, i] = x[idx, i - 1]
     return x
 
-# If we want to make sure that this works with the Arbin,
-# we have to specify which path the data from the Arbin server is sent to 
-
         
 def load_data_single_channel(data_path, CH_Nr = None):
     '''
-    Loads data and turns it into the proper format for training 
-    Our models 
-    The data is structured such that 
     TODO
-    Make it such that we loop over all the cells we are testing
     '''
     return 
 
 
 def get_charge_policy(my_string):
 
-    # charge policy extract from string
+    # Writing the charge/discharge protocol from a string into an array
     vals = [
         float(x[0] + x[1]) for x in re.findall(r"(\d\.\d+)|(\d+)", my_string)
     ]  # get three  ints or floats from a string,
@@ -332,7 +321,7 @@ def transform_charging(c):
 def get_capacity_input(data_dict,
                        num_offset=0,
                        start_cycle=10,
-                       stop_cycle=100,
+                       stop_cycle=15,
                        use_long_cschedule=False):
     for key in data_dict.keys():
         #We loop over all the individual cells
@@ -399,16 +388,19 @@ def get_capacity_input(data_dict,
     return x, y, charge_policy[:, :3], in_cycle_data
 
 
-def assemble_dataset(x, y, augment, seq_len=50, use_cycle_counter=True):
-
+def assemble_dataset(x, y, augment, seq_len=20, use_cycle_counter=True):
+    '''
+    Assembles the dataset into a prediction ys, and two inputs
+    TODO 
+    Assert dataset has a length larger than 1, if not throw error
+    Also deal with various errors 
+    '''
     xs = []
     ys = []
     add_data_s = []
     for i in range(len(x)):
         for j in range(y[i] - seq_len - 3):
-
             xs.append(x[i, j:j + seq_len])
-
             ratio = x[i, j + seq_len] / (x[i, j + seq_len - 1] + 10e-17)
 
             ys.append((ratio, (y[i] - seq_len - j)))

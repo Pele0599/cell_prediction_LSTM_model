@@ -1,4 +1,4 @@
-import request 
+import requests 
 from config import server_config, data_config
 # Script used for sending requests to train a new LSTM model on 
 # Arbin data 
@@ -35,7 +35,5 @@ request_url = "http://{}:{}/{}/{}".format(
     server_config["server_mac"]["key"],
     server_config["server_mac"]["port"],
     server,
-    action,
-    )
-
-request.get(request_url,)
+    action,)
+requests.get(request_url,)
