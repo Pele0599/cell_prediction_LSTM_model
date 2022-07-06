@@ -46,6 +46,7 @@ def retrain_model(save_folder : str,
             json_status_filename = file  #and parameters of the model 
             with open(os.path.join(model_path, json_status_filename), 'r') as openfile:
                 json_object = json.load(openfile)
+
                 params = json_object["Model_parameters"]
 
 
@@ -286,10 +287,13 @@ def retrain_model(save_folder : str,
     results["best_val_loss"] = best_val_loss
     
     # Saving the results (RMSE_test, RMSE_train, etc...) in a .pkl format
+    if model_name == None:
+        model_name = 'pele'
     pkl.dump(results, open(os.path.join(save_folder, model_name + ".pkl"), "wb")) 
 
     # Saving the model parameters, and the way in which we train the models
-    add_trainset_json_status(save_folder, os.path.basename(data_path))
+    
+    add_trainset_json_status(os.path.basename(data_path),save_folder)
     
     # Saving model weights for the LSTM model inside a .pt format 
     torch.save(model.state_dict(), oj(save_folder, model_name + ".pt"))

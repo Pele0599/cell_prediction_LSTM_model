@@ -62,12 +62,12 @@ if __name__ == "__main__":
         }
     abs_data_path = "/Users/paolovincenzofreieslebendeblasio/Cell_Lifetime_prediction/celltest.hdf5"
     #save_dict_to_hdf5(data,"test.hdf5")
-    test_save = "/Users/paolovincenzofreieslebendeblasio/Cell_Lifetime_prediction/test"
+    test_save = "/Users/paolovincenzofreieslebendeblasio/Cell_Lifetime_prediction/LaurasModels"
     data_path = abs_data_path
     model_name = "test_model_2"
-    train_new_model(params=params, 
+    retrain_model(
         save_folder=test_save, 
         data_path=data_path,
-        model_name=model_name)
+        model_path=test_save)  
     print("Initialized ML cell-lifetime prediction server")
     

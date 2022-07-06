@@ -32,7 +32,7 @@ def add_trainset_json_status(train_file_name,
     num_train_times = 1
     for file in os.listdir(save_results_path):
         if file.endswith(".json"):
-            with open(save_results_path + file, 'r') as openfile:
+            with open(os.path.join(save_results_path,file), 'r') as openfile:
                 json_object = json.load(openfile)
                 for key in json_object.keys():
                     if len(key.split("Train_set")) > 1:
@@ -41,7 +41,7 @@ def add_trainset_json_status(train_file_name,
                 new_entry = {"Train_set_" + str(num_train_times): train_file_name} 
                 json_object.update(new_entry)
                 updated_json = json.dumps(json_object, indent = 4)
-                with open(save_results_path + file, "w") as outfile:
+                with open(os.path.join(save_results_path, file), "w") as outfile:
                     outfile.write(updated_json)
     
 def initialize_model(params, input_dim, num_augment, model_weights = None):
@@ -70,7 +70,9 @@ def initialize_model(params, input_dim, num_augment, model_weights = None):
             seq_len=params['sequence_length'],
             n_layers=2,
         ).to(device)
+    
     else:
+        print("We use covarates")
         model = models.Uncertain_LSTM(
             num_in=input_dim,
             num_augment=num_augment,
@@ -85,8 +87,20 @@ def initialize_model(params, input_dim, num_augment, model_weights = None):
         return model 
     return model 
 
+def get_model_hyperparams_from_json(json_file):
+    '''
+    Get hyperparameters of the LSTM model from the json file 
+    '''
+    hyperparams = {}
+    with open(json_file, 'r') as openfile:
+        json_object = json.load(openfile)
+        for key in json_object.keys():
+            hyperparams[key] = json_object[key]
+    return hyperparams
 
-    
+save_path = "/Users/paolovincenzofreieslebendeblasio/Cell_Lifetime_prediction/LaurasModels/testmodel_status_test_model_2.json"
+print(get_model_hyperparams_from_json(save_path))
+
 
 #create_json_status('blabla.hdf5', params, 
 #        "test_model", "/Users/paolovincenzofreieslebendeblasio/Cell_Lifetime_prediction/")

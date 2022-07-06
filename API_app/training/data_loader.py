@@ -234,7 +234,7 @@ def get_capacity_spline(cell, cycle):
     """
     #Get charge/discharge curve, and voltage curve as a the cell goes from 
     # fully charged -> discharged, or discharged -> fully charged
-    
+   
     v_curve, q_curve = get_capacity_curve(cell, cycle, is_discharge=True)
     
     f = interpolate.interp1d(v_curve, q_curve, fill_value="extrapolate")
@@ -331,7 +331,7 @@ def get_capacity_input(data_dict,
         start_curve = get_capacity_spline(
             bat,
             start_cycle, 
-        )
+        ) #We should make it such that at least 5-10 cycles have been performed on the battery
 
         stop_curve = get_capacity_spline(
             bat,
@@ -356,7 +356,7 @@ def get_capacity_input(data_dict,
     max_lifetime = get_max_life_time(data_dict) - num_offset
 
     num_bats = len(data_dict)
-    max_lifetime = 236
+    max_lifetime = 3000 #Maximum number of cycles before batteries reaches 80 % capacity
     x = -1 * np.ones((num_bats, max_lifetime))
     charge_policy = np.zeros((num_bats, 4))
     in_cycle_data = np.zeros((num_bats, 3))
@@ -392,8 +392,8 @@ def assemble_dataset(x, y, augment, seq_len=20, use_cycle_counter=True):
     '''
     Assembles the dataset into a prediction ys, and two inputs
     TODO 
-    Assert dataset has a length larger than 1, if not throw error
-    Also deal with various errors 
+    Assert that every cell in the dataset at 
+    least has been cycles more than 10 times
     '''
     xs = []
     ys = []
